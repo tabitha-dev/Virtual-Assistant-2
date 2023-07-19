@@ -1,0 +1,77 @@
+@import url('https://fonts.googleapis.com/css?family=Roboto');
+
+/* Global Styles */
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f5f5f5;
+  margin: 0;
+  padding: 0;
+}
+
+/* Chat Styles */
+.chat-container {
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  max-height: 400px;
+  padding: 20px;
+}
+
+.message-container {
+  margin-bottom: 10px;
+}
+
+.message-bubble {
+  background-color: #ebeef0;
+  border-radius: 16px;
+  padding: 12px 16px;
+  line-height: 1.4;
+  color: #000000;
+}
+
+.user-bubble {
+  align-self: flex-start;
+  background-color: #ffffff;
+}
+
+.assistant-bubble {
+  align-self: flex-end;
+  background-color: #0088cc;
+  color: #ffffff;
+}
+
+/* Form Styles */
+.message-form {
+  display: flex;
+  margin-top: 20px;
+}
+
+.message-form input[type="text"] {
+  flex-grow: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
+  background-color: #ffffff;
+}
+
+.message-form button {
+  padding: 10px;
+  border: none;
+  background-color: #0088cc;
+  color: #ffffff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Clear Button Styles */
+#clear-button {
+  margin-left: 10px;
+  background-color: #f44336;
+}
+
+/* Title Styles */
+h1 {
+  text-align: center;
+  margin-bottom: 20px;
+}

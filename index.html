@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Virtual Assistant</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+  <link rel="stylesheet" href="style.css">
+  <style>
+ 
+</style>
+
+</head>
+<body>
+  <div class="container" id="app">
+    <h1>Virtual Assistant</h1>
+    <div class="assistant-container">
+      <div class="chat-container" id="chat-container">
+        <div v-for="message in messages" :key="message.id" :class="getMessageContainerClasses(message)">
+          <div class="message-bubble" :class="getMessageBubbleClasses(message)">
+            {{ message.content }}
+          </div>
+        </div>
+      </div>
+      <form class="message-form" @submit.prevent="sendMessage">
+        <input type="text" v-model="newMessage" placeholder="Type your message" autocomplete="off" required>
+        <button type="submit"><i class="fas fa-paper-plane"></i></button>
+        <button id="clear-button" @click="clearChat"><i class="fas fa-trash"></i></button>
+        <button id="clear-button" @click="clearHistory">Clear History</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+  <script>
+    // Chat Container Component
+Vue.component('chat-container', {
+  template: `
+    <div class="chat-container" id="chat-container">
+      <message-bubble v-for="message in messages" :key="message.id" :message="message"></message-bubble>
+    </div>
+  `,
+  props: ['messages'],
+});
+
+// Message Bubble Component
+Vue.component('message-bubble', {
+  template: `
+    <div :class="getMessageContainerClasses">
+      <div class="message-bubble" :class="getMessageBubbleClasses">
+        {{ message.content }}
+      </div>
+    </div>
+  `,
+  props: ['message'],
+  computed: {
+    getMessageContainerClasses() {
+      return {
+        'message-container': true,
+        'user-message': this.message.sender === 'user',
+        'assistant-message': this.message.sender === 'assistant',
+      };
+    },
+    getMessageBubbleClasses() {
+      return {
+        'message-bubble': true,
+        'user-bubble': this.message.sender === 'user',
+        'assistant-bubble': this.message.sender === 'assistant',
+      };
+    },
+  },
+});
+
+// Message Form Component
+Vue.component('message-form', {
+  template: `
+    <form class="message-form" @submit.prevent="sendMessage">
+      <input type="text" v-model="newMessage" placeholder="Type your message" autocomplete="off" required>
+      <button type="submit"><i class="fas fa-paper-plane"></i></button>
+      <button id="clear-button" @click="clearChat"><i class="fas fa-trash"></i></button>
+      <button id="clear-button" @click="clearHistory">Clear History</button>
+    </form>
+  `,
+  data() {
+    return {
+      newMessage: '',
+    };
+  },
+  methods: {
+    sendMessage() {
+      const message = this.newMessage.trim();
+      if (message !== '') {
+        this.$emit('message-sent', message);
+        this.newMessage = '';
+      }
+    },
+    clearChat() {
+      this.$emit('clear-chat');
+    },
+    clearHistory() {
+      this.$emit('clear-history');
+    },
+  },
+});
+
+// Main Vue Instance
+const app = new Vue({
+  el: '#app',
+  data: {
+    messages: [],
+    newMessage: '',
+    tasks: [],
+    reminders: [],
+    events: [],
+    currentTask: null,
+    currentReminder: null,
+    currentEvent: null,
+  },
+  created() {
+    const savedTasks = JSON.parse(localStorage.getItem('tasks')) || [];
+    this.tasks = savedTasks;
+
+    const savedMessages = JSON.parse(localStorage.getItem('messages')) || [];
+    this.messages = savedMessages;
+
+    const savedReminders = JSON.parse(localStorage.getItem('reminders')) || [];
+    this.reminders = savedReminders;
+
+    const savedEvents = JSON.parse(localStorage.getItem('events')) || [];
+    this.events = savedEvents;
+  },
+  methods: {
+    sendMessage() {
+      const message = this.newMessage.trim();
+      if (message !== '') {
+        this.displayMessage('user', message);
+
+        if (message === 'add task') {
+          this.startTaskCreation();
+        } else if (this.currentTask) {
+          this.continueTaskCreation(message);
+        } else if (message === 'show tasks') {
+          this.displayTasks();
+        } else if (message.startsWith('complete task')) {
+          this.completeTask(message);
+        } else if (message === 'add reminder') {
+          this.startReminderCreation();
+        } else if (this.currentReminder) {
+          this.continueReminderCreation(message);
+        } else if (message === 'show reminders') {
+          this.displayReminders();
+        } else if (message === 'add event') {
+          this.startEventCreation();
+        } else if (this.currentEvent) {
+          this.continueEventCreation(message);
+        } else if (message === 'show events') {
+          this.displayEvents();
+        } else if (message === 'clear') {
+          this.clearChat();
+        } else {
+          this.displayMessage('assistant', this.getVirtualAssistantResponse(message));
+        }
+
+        this.newMessage = '';
+      }
+    },
+    startTaskCreation() {
+      this.displayMessage('assistant', 'Please provide a task description:');
+      this.currentTask = {};
+    },
+    continueTaskCreation(description) {
+      if (!description || description.trim() === '') {
+        this.displayMessage('assistant', 'Please provide a valid task description.');
+        return;
+      }
+
+      this.addTask(description);
+      this.displayMessage('assistant', `Task "${description}" added successfully.`);
+      this.currentTask = null;
+    },
+    addTask(description) {
+      const taskItem = {
+        type: 'task',
+        description: description,
+        completed: false,
+      };
+      this.tasks.push(taskItem);
+      this.saveTasks();
+    },
+    completeTask(message) {
+      const index = parseInt(message.substring(13).trim());
+      if (!isNaN(index) && index > 0 && index <= this.tasks.length) {
+        const task = this.tasks[index - 1];
+        task.completed = true;
+        this.displayTasks();
+        this.saveTasks();
+      } else {
+        this.displayMessage('assistant', 'Invalid task index.');
+      }
+    },
+    displayTasks() {
+      if (this.tasks.length > 0) {
+        this.displayMessage('assistant', 'Tasks:');
+        this.tasks.forEach((task, index) => {
+          const taskStatus = task.completed ? '[x]' : '[ ]';
+          this.displayMessage('assistant', `${index + 1}. ${taskStatus} ${task.description}`);
+        });
+      } else {
+        this.displayMessage('assistant', 'No tasks found.');
+      }
+    },
+    startReminderCreation() {
+      this.displayMessage('assistant', 'Please provide a reminder description:');
+      this.currentReminder = {};
+    },
+    continueReminderCreation(description) {
+      if (!description || description.trim() === '') {
+        this.displayMessage('assistant', 'Please provide a valid reminder description.');
+        return;
+      }
+
+      this.addReminder(description);
+      this.displayMessage('assistant', `Reminder "${description}" added successfully.`);
+      this.currentReminder = null;
+    },
+    addReminder(description) {
+      const reminderItem = {
+        type: 'reminder',
+        description: description,
+      };
+      this.reminders.push(reminderItem);
+      this.saveReminders();
+    },
+    displayReminders() {
+      if (this.reminders.length > 0) {
+        this.displayMessage('assistant', 'Reminders:');
+        this.reminders.forEach((reminder, index) => {
+          this.displayMessage('assistant', `${index + 1}. ${reminder.description}`);
+        });
+      } else {
+        this.displayMessage('assistant', 'No reminders found.');
+      }
+    },
+    startEventCreation() {
+      this.displayMessage('assistant', 'Please provide an event description:');
+      this.currentEvent = {};
+    },
+    continueEventCreation(description) {
+      if (!description || description.trim() === '') {
+        this.displayMessage('assistant', 'Please provide a valid event description.');
+        return;
+      }
+
+      this.addEvent(description);
+      this.displayMessage('assistant', `Event "${description}" added successfully.`);
+      this.currentEvent = null;
+    },
+    addEvent(description) {
+      const eventItem = {
+        type: 'event',
+        description: description,
+        completed: false,
+      };
+      this.events.push(eventItem);
+      this.saveEvents();
+    },
+    displayEvents() {
+      if (this.events.length > 0) {
+        this.displayMessage('assistant', 'Events:');
+        this.events.forEach((event, index) => {
+          const eventStatus = event.completed ? '[x]' : '[ ]';
+          this.displayMessage('assistant', `${index + 1}. ${eventStatus} ${event.description}`);
+        });
+      } else {
+        this.displayMessage('assistant', 'No events found.');
+      }
+    },
+    displayMessage(sender, message) {
+      const newMessage = {
+        id: Date.now(),
+        sender: sender,
+        content: message,
+      };
+      this.messages.push(newMessage);
+      this.saveMessages();
+      this.scrollChatToBottom();
+    },
+    scrollChatToBottom() {
+      this.$nextTick(() => {
+        const chatContainer = document.getElementById('chat-container');
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      });
+    },
+    getVirtualAssistantResponse(message) {
+      const lowerCaseMessage = message.toLowerCase();
+
+      const rules = [
+        { pattern: 'hello', response: 'Hello! How can I assist you today?' },
+        { pattern: 'how are you', response: "I'm doing well. Thank you!" },
+        { pattern: 'add task', response: 'Sure, please provide a task description.' },
+        { pattern: 'show tasks', response: 'Here are your tasks:' },
+        { pattern: 'complete task', response: 'Sure, please provide the task number to complete.' },
+        { pattern: 'add reminder', response: 'Sure, please provide a reminder description.' },
+        { pattern: 'show reminders', response: 'Here are your reminders:' },
+        { pattern: 'add event', response: 'Sure, please provide an event description.' },
+        { pattern: 'show events', response: 'Here are your events:' },
+        { pattern: 'thank you', response: "You're welcome! If you need any further assistance, feel free to ask." },
+        { pattern: 'bye', response: 'Goodbye! Have a great day!' },
+        // Add more rules and responses as needed
+      ];
+
+      const matchingRule = rules.find(rule => lowerCaseMessage.includes(rule.pattern));
+      return matchingRule ? matchingRule.response : "I'm sorry, but I didn't understand that. Can you please rephrase?";
+    },
+    clearChat() {
+      this.messages = [];
+      this.tasks = [];
+      this.reminders = [];
+      this.events = [];
+      this.saveTasks();
+      this.saveMessages();
+      this.saveReminders();
+      this.saveEvents();
+    },
+    saveTasks() {
+      localStorage.setItem('tasks', JSON.stringify(this.tasks));
+    },
+    saveMessages() {
+      localStorage.setItem('messages', JSON.stringify(this.messages));
+    },
+    saveReminders() {
+      localStorage.setItem('reminders', JSON.stringify(this.reminders));
+    },
+    saveEvents() {
+      localStorage.setItem('events', JSON.stringify(this.events));
+    },
+    getMessageContainerClasses(message) {
+      return {
+        'message-container': true,
+        'user-message': message.sender === 'user',
+        'assistant-message': message.sender === 'assistant',
+      };
+    },
+    getMessageBubbleClasses(message) {
+      return {
+        'message-bubble': true,
+        'user-bubble': message.sender === 'user',
+        'assistant-bubble': message.sender === 'assistant',
+      };
+    },
+    clearHistory() {
+      this.messages = [];
+      this.tasks.forEach(task => {
+        task.completed = true;
+      });
+      this.reminders = [];
+      this.saveTasks();
+      this.saveMessages();
+      this.saveReminders();
+    },
+  },
+});
+
+  </script>
+</body>
+</html>
